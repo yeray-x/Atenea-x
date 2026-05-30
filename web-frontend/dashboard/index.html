@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Proxmox Control Center</title>
+
+<style>
+:root{
+    --bg:#0f172a;
+    --panel:#111827;
+    --panel2:#0b1220;
+    --border:#1f2937;
+    --text:#e2e8f0;
+    --blue:#38bdf8;
+    --green:#22c55e;
+    --red:#ef4444;
+    --gray:#6b7280;
+}
+
+body{
+    margin:0;
+    font-family:Arial;
+    background:var(--bg);
+    color:var(--text);
+}
+
+/* HEADER */
+header{
+    padding:20px;
+    background:#020617;
+    border-bottom:1px solid var(--border);
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+}
+
+h1{margin:0;color:var(--blue);}
+
+/* CONTAINER */
+.container{padding:20px;}
+
+.topbar{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom:15px;
+}
+
+/* GRID */
+.grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fill,minmax(320px,1fr));
+    gap:15px;
+}
+
+/* CARD */
+.card{
+    background:var(--panel);
+    border:1px solid var(--border);
+    border-radius:12px;
+    padding:15px;
+    transition:.2s;
+}
+
+.card:hover{
+    transform:translateY(-2px);
+}
+
+.title{
+    color:var(--blue);
+    font-size:18px;
+    margin-bottom:10px;
+}
+
+.info{
+    font-size:13px;
+    line-height:1.5;
+    margin-bottom:10px;
+}
+
+/* STATUS */
+.status{
+    font-size:12px;
+    padding:4px 8px;
+    border-radius:6px;
+}
+
+.running{background:rgba(34,197,94,.2);color:var(--green);}
+.stopped{background:rgba(239,68,68,.2);color:var(--red);}
+.unknown{background:rgba(107,114,128,.2);color:var(--gray);}
+
+/* BUTTONS */
+button{
+    border:none;
+    padding:8px 10px;
+    margin:3px;
+    border-radius:6px;
+    cursor:pointer;
+    font-weight:bold;
+}
+
+.start{background:var(--green);color:white;}
+.stop{background:var(--red);color:white;}
+.delete{background:var(--gray);color:white;}
+
+button:disabled{
+    opacity:.4;
+    cursor:not-allowed;
+}
+
+/* REFRESH */
+.refresh{
+    background:var(--blue);
+    color:#000;
+    padding:10px 14px;
+    border-radius:8px;
+    font-weight:bold;
+}
+
+/* MODAL */
+#modal{
+    position:fixed;
+    inset:0;
+    background:rgba(0,0,0,.8);
+    display:none;
+    align-items:center;
+    justify-content:center;
+}
+
+.box{
+    width:420px;
+    background:var(--panel);
+    border:1px solid var(--border);
+    border-radius:12px;
+    padding:15px;
+}
+
+/* PROGRESS */
+.bar{
+    height:8px;
+    background:var(--panel2);
+    border-radius:6px;
+    overflow:hidden;
+}
+
+#fill{
+    height:100%;
+    width:0%;
+    background:var(--blue);
+    transition:.3s;
+}
+
+/* LOGS */
+#logs{
+    margin-top:10px;
+    background:var(--panel2);
+    padding:10px;
+    font-size:12px;
+    height:160px;
+    overflow:auto;
+    white-space:pre-wrap;
+}
+
+/* SMALL TEXT */
+.small{
+    font-size:12px;
+    opacity:.7;
+}
+
+    nav {
+        display: flex;
+        justify-content: center;
+        gap: 20px;
+        padding: 15px;
+        background: #111827;
+    }
+
+    nav a {
+        color: white;
+        text-decoration: none;
+        padding: 10px 15px;
+        border-radius: 8px;
+        background: #1f2937;
+        transition: 0.3s;
+    }
+
+    nav a:hover {
+        background: #3b82f6;
+    }
+
+</style>
+</head>
+
+<body>
+
+<header>
+    <h1>🖥️ Consola Central Atenea-x</h1>
+    <button class="refresh" onclick="loadVMs()">REFRESH</button>
+</header>
+
+<nav>
+    <a href="http://atenea-x.local/">🏠 Empresa</a>
+    <a href="/Proxmox/web-frontend/servers.html">🖥 Servidores</a>
+    <a href="#">💾 Storage</a>
+</nav>
+
+<div class="container">
+
+    <div class="topbar">
+        <h2>Virtual Machines</h2>
+        <span class="small" id="status">Idle</span>
+    </div>
+
+    <div id="grid" class="grid"></div>
+
+</div>
+
+<!-- MODAL -->
+<div id="modal">
+    <div class="box">
+        <h3 id="title">Procesando...</h3>
+
+        <div class="bar"><div id="fill"></div></div>
+
+        <pre id="logs"></pre>
+
+        <button onclick="closeModal()">Cerrar</button>
+    </div>
+</div>
+
+<script>
+
+const API = "http://127.0.0.1:4567";
+
+let busy = false;
+let progressValue = 0;
+
+/* ===================== UI ===================== */
+
+function modal(title){
+    document.getElementById("modal").style.display="flex";
+    document.getElementById("title").innerText=title;
+    document.getElementById("logs").innerText="";
+    document.getElementById("fill").style.width="0%";
+    progressValue = 0;
+}
+
+function closeModal(){
+    document.getElementById("modal").style.display="none";
+}
+
+function log(msg){
+    const el=document.getElementById("logs");
+    el.innerText += msg + "\n";
+    el.scrollTop = el.scrollHeight;
+}
+
+/* ===================== PROGRESS ===================== */
+
+function startProgress(){
+    const interval = setInterval(()=>{
+        if(!busy || progressValue >= 90){
+            clearInterval(interval);
+            return;
+        }
+        progressValue += Math.random()*12;
+        document.getElementById("fill").style.width = progressValue+"%";
+    },300);
+}
+
+/* ===================== API WRAPPER ===================== */
+
+async function callAPI(url, options){
+
+    log("➡️ " + url);
+
+    try{
+        const res = await fetch(url, options);
+        const text = await res.text();
+
+        let data;
+        try{
+            data = JSON.parse(text);
+        }catch{
+            data = { raw:text };
+        }
+
+        log("⬅️ RESPONSE:");
+        log(JSON.stringify(data,null,2));
+
+        if(!res.ok || data.ok===false){
+            throw new Error(data.error || "API ERROR");
+        }
+
+        return data;
+
+    }catch(err){
+        log("❌ ERROR:");
+        log(err.message);
+        throw err;
+    }
+}
+
+/* ===================== LOAD ===================== */
+
+async function loadVMs(){
+
+    const grid=document.getElementById("grid");
+    grid.innerHTML="Loading...";
+
+    try{
+        const res=await fetch(`${API}/vms`);
+        const vms=await res.json();
+
+        grid.innerHTML="";
+
+        vms.forEach(vm=>{
+
+            const card=document.createElement("div");
+            card.className="card";
+
+            card.innerHTML=`
+                <div class="title">${vm.nombre} (#${vm.vmid})</div>
+
+                <div class="info">
+                    CPU: ${vm.cpu} cores<br>
+                    RAM: ${vm.ram} MB<br>
+                    DISK: ${vm.disk} GB<br>
+                    IP: ${vm.ip || "N/A"}
+                </div>
+
+                <span class="status ${vm.status||"unknown"}">
+                    ${(vm.status||"unknown").toUpperCase()}
+                </span>
+
+                <br><br>
+
+                <button class="start" onclick="startVM(${vm.vmid})">START</button>
+                <button class="stop" onclick="stopVM(${vm.vmid})">STOP</button>
+                <button class="delete" onclick="deleteVM(${vm.vmid})">DELETE</button>
+            `;
+
+            grid.appendChild(card);
+        });
+
+    }catch(e){
+        grid.innerHTML="ERROR: "+e.message;
+    }
+}
+
+/* ===================== ACTIONS ===================== */
+
+async function startVM(id){
+    busy=true;
+    modal("Starting VM "+id);
+    startProgress();
+
+    await callAPI(`${API}/vm/start`,{
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({vmid:id})
+    });
+
+    document.getElementById("fill").style.width="100%";
+    busy=false;
+    loadVMs();
+}
+
+async function stopVM(id){
+    busy=true;
+    modal("Stopping VM "+id);
+    startProgress();
+
+    await callAPI(`${API}/vm/stop`,{
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({vmid:id})
+    });
+
+    document.getElementById("fill").style.width="100%";
+    busy=false;
+    loadVMs();
+}
+
+async function deleteVM(id){
+
+    if(!confirm("Delete VM "+id+"?")) return;
+
+    busy=true;
+    modal("Deleting VM "+id);
+    startProgress();
+
+    await callAPI(`${API}/vm/${id}`,{
+        method:"DELETE"
+    });
+
+    document.getElementById("fill").style.width="100%";
+    busy=false;
+    loadVMs();
+}
+
+/* INIT */
+loadVMs();
+setInterval(loadVMs,150000);
+
+</script>
+
+</body>
+</html>

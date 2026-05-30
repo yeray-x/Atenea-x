@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Atenea-X Servers</title>
+<link rel="stylesheet" href="style.css">
+
+<style>
+.bar {
+    width: 100%;
+    height: 10px;
+    background: #1f2937;
+    border-radius: 5px;
+    overflow: hidden;
+    margin-top: 10px;
+}
+
+#bar-fill {
+    height: 100%;
+    width: 0%;
+    background: #06b6d4;
+    transition: width 0.8s ease;
+}
+
+.resultado {
+    margin-top: 20px;
+}
+
+.success {
+    background: #052e1f;
+    border: 1px solid #10b981;
+    padding: 16px;
+    border-radius: 10px;
+    color: #d1fae5;
+}
+
+.error {
+    background: #2a0b0b;
+    border: 1px solid #ef4444;
+    padding: 16px;
+    border-radius: 10px;
+    color: #fecaca;
+}
+
+code {
+    display: block;
+    background: #0f172a;
+    padding: 10px;
+    border-radius: 6px;
+    margin-top: 10px;
+    color: #38bdf8;
+}
+
+nav {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+    background: #020617;
+    padding: 15px;
+}
+
+nav a {
+    color: #06b6d4;
+    text-decoration: none;
+    font-weight: bold;
+}
+
+nav a:hover {
+    text-decoration: underline;
+}
+</style>
+
+</head>
+
+<body>
+
+<header>
+    <h1>🖥️ Atenea-X Servers</h1>
+    <p>Despliegue instantáneo de máquinas virtuales</p>
+</header>
+
+<nav>
+    <a href="index.html">⬅ Volver a la tienda</a>
+    <a href="http://atenea-x.local/">🏠 Atenea-x</a>
+    <a href="/Proxmox/web-frontend/dashboard/index.html">📊 Dashboard Proxmox</a>
+</nav>
+
+<section class="form-container">
+
+    <h2>Configura tu servidor</h2>
+
+    <form id="vmForm">
+
+        <label>Nombre de la VM</label>
+        <input type="text" id="nombre" required>
+
+        <label>CPU</label>
+        <select id="cpu">
+            <option value="2">2 CPU</option>
+            <option value="4">4 CPU</option>
+            <option value="8">8 CPU</option>
+            <option value="16">16 CPU</option>
+        </select>
+
+        <label>RAM</label>
+        <select id="ram">
+            <option value="1024">1 GB</option>
+            <option value="2048">2 GB</option>
+            <option value="4096">4 GB</option>
+            <option value="8192">8 GB</option>
+        </select>
+
+        <label>Disco</label>
+        <select id="disk">
+            <option value="64">64 GB</option>
+            <option value="128">128 GB</option>
+            <option value="256">256 GB</option>
+            <option value="512">512 GB</option>
+        </select>
+
+        <button type="submit" class="btn">Crear servidor</button>
+
+    </form>
+
+    <div id="progress-container" style="display:none;">
+        <p>🚀 Creando servidor...</p>
+        <div class="bar">
+            <div id="bar-fill"></div>
+        </div>
+    </div>
+
+    <div id="resultado" class="resultado"></div>
+
+</section>
+
+<script>
+function startProgress() {
+    const bar = document.getElementById("bar-fill");
+    const container = document.getElementById("progress-container");
+
+    container.style.display = "block";
+
+    let progress = 0;
+
+    const interval = setInterval(() => {
+        if (progress >= 90) {
+            clearInterval(interval);
+            return;
+        }
+        progress += Math.random() * 12;
+        bar.style.width = progress + "%";
+    }, 700);
+}
+
+document.getElementById("vmForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+
+    const resultado = document.getElementById("resultado");
+
+    startProgress();
+    resultado.innerHTML = "⏳ Desplegando servidor...";
+
+    const data = {
+        nombre: document.getElementById("nombre").value,
+        cpu: parseInt(document.getElementById("cpu").value),
+        ram: parseInt(document.getElementById("ram").value),
+        disk: parseInt(document.getElementById("disk").value)
+    };
+
+    try {
+        const res = await fetch("http://127.0.0.1:4567/create-order", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "x-api-key": "123456"
+            },
+            body: JSON.stringify(data)
+        });
+
+        const result = await res.json();
+
+        console.log("RESPUESTA:", result);
+
+if (result.ok) {
+
+    document.getElementById("bar-fill").style.width = "100%";
+
+    const vmid = result.vmid ?? "N/A";
+    const cpu = result.cpu ?? "N/A";
+    const ram = result.ram ?? "N/A";
+    const disk = result.disk_size ?? "N/A";
+
+    const user = result.ssh?.user ?? "N/A";
+    const pass = result.ssh?.password ?? "N/A";
+    const ip = result.ip ?? "N/A";
+
+    resultado.innerHTML = `
+        <div class="success">
+            <h3>✅ Servidor desplegado</h3>
+            <hr>
+
+            🆔 <b>VMID:</b> ${vmid}<br>
+            ⚙️ <b>CPU:</b> ${cpu} cores<br>
+            🧠 <b>RAM:</b> ${ram} MB<br>
+            💾 <b>Disco:</b> ${disk} GB<br>
+
+            <br>
+
+            🌐 <b>IP:</b> ${ip}<br>
+
+            <br>
+
+            👤 <b>Usuario:</b> ${user}<br>
+            🔑 <b>Password:</b> ${pass}<br>
+
+            <br>
+
+            🌐 <b>SSH:</b><br>
+            <code>ssh ${user}@${ip}</code>
+
+            <br><br>
+
+            ⚡ Estado: Running
+        </div>
+    `;
+}
+
+    } catch (err) {
+        resultado.innerHTML = `
+            <div class="error">
+                ❌ Error: ${err.message}
+            </div>
+        `;
+    }
+});
+</script>
+
+</body>
+</html>

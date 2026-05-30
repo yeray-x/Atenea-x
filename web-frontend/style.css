@@ -1,0 +1,139 @@
+body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    background: #0a0f1c;
+    color: #fff;
+}
+
+header {
+    text-align: center;
+    padding: 40px;
+    background: linear-gradient(90deg, #0f172a, #1e293b);
+}
+
+h1 {
+    margin: 0;
+    font-size: 2.5em;
+}
+
+.container {
+    display: flex;
+    justify-content: center;
+    gap: 30px;
+    padding: 50px;
+}
+
+.card {
+    background: #111827;
+    padding: 30px;
+    border-radius: 12px;
+    width: 250px;
+    text-align: center;
+    transition: 0.3s;
+    box-shadow: 0 0 20px rgba(0,255,255,0.1);
+}
+
+.card:hover {
+    transform: translateY(-10px);
+    box-shadow: 0 0 30px rgba(0,255,255,0.3);
+}
+
+.btn {
+    display: inline-block;
+    margin-top: 15px;
+    padding: 10px 20px;
+    background: #06b6d4;
+    color: black;
+    text-decoration: none;
+    border-radius: 6px;
+    font-weight: bold;
+}
+
+.form-container {
+    max-width: 500px;
+    margin: 50px auto;
+    background: #111827;
+    padding: 30px;
+    border-radius: 12px;
+}
+
+form {
+    display: flex;
+    flex-direction: column;
+}
+
+input, select {
+    margin-bottom: 15px;
+    padding: 10px;
+    border-radius: 6px;
+    border: none;
+}
+
+pre {
+    margin-top: 20px;
+    background: black;
+    padding: 15px;
+    border-radius: 8px;
+    overflow: auto;
+}
+
+.resultado {
+    margin-top: 20px;
+}
+
+.success {
+    background: #022c22;
+    border: 1px solid #10b981;
+    padding: 15px;
+    border-radius: 8px;
+}
+
+.error {
+    background: #2c0202;
+    border: 1px solid #ef4444;
+    padding: 15px;
+    border-radius: 8px;
+}
+
+nav {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+    background: #020617;
+    padding: 15px;
+}
+
+nav a {
+    color: #06b6d4;
+    text-decoration: none;
+    font-weight: bold;
+}
+
+nav a:hover {
+    text-decoration: underline;
+}
+
+.bar {
+    width: 100%;
+    height: 10px;
+    background: #1f2937;
+    border-radius: 5px;
+    overflow: hidden;
+    margin-top: 10px;
+}
+
+#bar-fill {
+    height: 100%;
+    width: 0%;
+    background: #06b6d4;
+    transition: width 1s;
+}
+
+code {
+    display: block;
+    background: #0f172a;
+    padding: 10px;
+    border-radius: 6px;
+    margin-top: 10px;
+    color: #38bdf8;
+}
